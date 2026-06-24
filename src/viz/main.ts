@@ -286,7 +286,7 @@ runRedosBtn.addEventListener('click', () => {
     const cap = result.naiveCappedAt;
     el('redos-summary').innerHTML =
       `The naive matcher was halted${cap !== null ? ` at N=${cap}` : ''} once a single run exceeded the wall-clock budget. ` +
-      `The linear NFA engine matched <code>a<sup>${result.bigN}</sup> + '!'</code> in ` +
+      `The linear NFA engine evaluated <code>a<sup>${result.bigN}</sup> + '!'</code> in ` +
       `${result.engineBigMs.toFixed(2)}ms — flat, no backtracking.`;
     runRedosBtn.disabled = false;
     runRedosBtn.textContent = 'Run benchmark';
@@ -314,7 +314,7 @@ runRedosBtn.addEventListener('click', () => {
     const cap = result.naiveCappedAt;
     el('redos-summary').innerHTML =
       `The naive matcher was halted${cap !== null ? ` at N=${cap}` : ''} once a single run exceeded the wall-clock budget. ` +
-      `The linear NFA engine matched <code>a<sup>${result.bigN}</sup> + '!'</code> in ` +
+      `The linear NFA engine evaluated <code>a<sup>${result.bigN}</sup> + '!'</code> in ` +
       `${result.engineBigMs.toFixed(2)}ms — flat, no backtracking.`;
   },
 };

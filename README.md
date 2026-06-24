@@ -22,13 +22,13 @@ A true finite-automaton engine cannot do this. It recognizes **exactly** the reg
 
 ![Catastrophic backtracking: exponential naive matcher vs flat linear NFA engine](docs/redos.png)
 
-The naive backtracker (red) is included only as a **foil** to make the contrast visible. The real engine (teal) matched `a⁵⁰⁰⁰ + '!'` in under a millisecond.
+The naive backtracker (red) is included only as a **foil** to make the contrast visible. The real engine (teal) *evaluated* `a⁵⁰⁰⁰ + '!'` (a reject) in under a millisecond.
 
 ---
 
 ## How it works
 
-The pipeline is six cohesive, individually-tested modules under [`src/engine`](src/engine):
+The pipeline is six cohesive, individually-tested stages under [`src/engine`](src/engine):
 
 | Stage | Module | What it does |
 | --- | --- | --- |
@@ -55,6 +55,10 @@ match('a(b|c)+d', 'abccd'); // true
 The four diagrams, the AST, and the graph layout are all **hand-rolled — no regex library, no graph-layout dependency.**
 
 ![All four diagrams for (a|b)*abb](docs/graphs.png)
+
+The visualizer steps the NFA one input character at a time, highlighting the current active state-set and showing consumed vs. remaining input until it lands in a green *accepted* or red *rejected* state:
+
+![Stepping the NFA simulation character by character with the active set highlighted](docs/stepthrough.png)
 
 ---
 
@@ -97,7 +101,7 @@ Matching is **full-string**: `compile(p).test(s)` is true iff `s` is matched in 
 Correctness is not asserted by a handful of hand-picked cases — it is **fuzzed against the host engine**. See [`test/`](test).
 
 - **Differential fuzzing** ([`fuzz.test.ts`](test/fuzz.test.ts)) — 5000 seeded random patterns from the safely-comparable subset, each run against `new RegExp('^(?:'+p+')$').test(s)`. All randomness comes from a seeded `mulberry32` PRNG, so CI is reproducible run to run and any failure is replayable.
-- **Cross-automaton agreement** — for every `(pattern, string)` pair, the linear **NFA simulation**, the **subset DFA**, the **minimized DFA**, and (on small inputs) the **naive backtracker** must *all* return the same boolean as the oracle. This directly substantiates "the minimal DFA recognizes the same language" and catches subset-construction and Hopcroft bugs cheaply.
+- **Cross-automaton agreement** — for every `(pattern, string)` pair, the linear **NFA simulation**, the **subset DFA**, the **minimized DFA**, and the **naive backtracker** (whenever it finishes within a fixed step budget) must *all* return the same boolean as the oracle. This directly substantiates "the minimal DFA recognizes the same language" and catches subset-construction and Hopcroft bugs cheaply.
 - **DFA-minimality invariant** ([`minimize.test.ts`](test/minimize.test.ts)) — `minimize(minimize(D))` has the same state count as `minimize(D)` (idempotence), plus hand-computed minimal-state-count fixtures over a `{a, b}` alphabet.
 - **Per-stage unit tests** for the tokenizer, parser (precedence + every parse-error case), NFA, DFA, and minimization, plus a dedicated semantics suite for the exact `.` / `[^…]` / `\d\w\s` / anchor rules.
 - **ReDoS is verified deterministically** in CI by a *step-count* proxy (the naive backtracker blows past a fixed operation budget on `(a+)+` while the minimized DFA answers cheaply). Wall-clock timings are demonstrated only in the visualizer, never asserted, so CI is never flaky.

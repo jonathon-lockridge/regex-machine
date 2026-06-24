@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "A from-scratch, linear-time regex engine (NFA/DFA) with an interactive visualizer",
   "type": "module",
+  "types": "./src/engine/index.ts",
+  "exports": {
+    ".": "./src/engine/index.ts"
+  },
   "license": "MIT",
   "author": "jonathon-lockridge",
   "keywords": [
