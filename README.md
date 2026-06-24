@@ -58,7 +58,7 @@ The four diagrams, the AST, and the graph layout are all **hand-rolled — no re
 
 The visualizer steps the NFA one input character at a time, highlighting the current active state-set and showing consumed vs. remaining input until it lands in a green *accepted* or red *rejected* state:
 
-![Stepping the NFA simulation character by character with the active set highlighted](docs/stepthrough.png)
+![Stepping the NFA simulation character by character with the active set highlighted](docs/stepthrough.gif)
 
 ---
 

@@ -368,10 +368,16 @@ button.btn:disabled {
   font-size: 11px;
   fill: var(--ink-soft);
   text-anchor: middle;
+  dominant-baseline: central;
 }
 .edge-label.epsilon {
   fill: var(--ink-faint);
   font-style: italic;
+}
+.edge-label-bg {
+  fill: var(--surface);
+  opacity: 0.92;
+  stroke: none;
 }
 .start-arrow {
   stroke: var(--accent);

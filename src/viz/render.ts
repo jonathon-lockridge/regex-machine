@@ -131,7 +131,7 @@ export function renderAutomaton(graph: VizGraph, highlight?: ReadonlySet<string>
     graph.nodes.map((n) => n.id),
     graph.edges,
     graph.startId,
-    { dx: 96, dy: 74, marginX: 46, marginY: 56 },
+    { dx: 116, dy: 84, marginX: 54, marginY: 60 },
   );
   const pos = layout.positions;
 
@@ -148,23 +148,42 @@ export function renderAutomaton(graph: VizGraph, highlight?: ReadonlySet<string>
     }
   }
 
-  const parts: string[] = [];
+  // Render in z-order: edge paths, then nodes, then edge labels on top — so a
+  // label's background plate masks any line crossing under it and is never
+  // hidden by a node.
+  const paths: string[] = [];
+  const labels: string[] = [];
   for (const e of grouped.values()) {
     const a = pos.get(e.from);
     const b = pos.get(e.to);
     if (!a || !b) continue;
-    parts.push(e.from === e.to ? selfLoop(a, e) : edgePath(a, b, e));
+    const geom = e.from === e.to ? selfLoop(a, e) : edgePath(a, b, e);
+    paths.push(geom.path);
+    labels.push(geom.label);
   }
 
+  const nodes: string[] = [];
   for (const n of graph.nodes) {
     const p = pos.get(n.id);
     if (!p) continue;
-    parts.push(renderNode(n, p, highlight?.has(n.id) ?? false));
+    nodes.push(renderNode(n, p, highlight?.has(n.id) ?? false));
   }
 
   const width = Math.max(layout.width, 120);
   const height = Math.max(layout.height + 24, 120);
-  return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${DEFS}${parts.join('')}</svg>`;
+  const body = [...paths, ...nodes, ...labels].join('');
+  return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${DEFS}${body}</svg>`;
+}
+
+/** A backgrounded edge label so it stays legible over crossing lines. */
+function edgeLabel(x: number, y: number, text: string, epsilon: boolean): string {
+  const n = [...text].length;
+  const w = Math.max(14, n * 6.7 + 8);
+  const cls = epsilon ? 'edge-label epsilon' : 'edge-label';
+  return (
+    `<rect class="edge-label-bg" x="${(x - w / 2).toFixed(1)}" y="${(y - 8).toFixed(1)}" width="${w.toFixed(1)}" height="16" rx="4"/>` +
+    `<text class="${cls}" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${escapeXml(text)}</text>`
+  );
 }
 
 function renderNode(n: VizNode, p: Point, active: boolean): string {
@@ -186,20 +205,24 @@ function renderNode(n: VizNode, p: Point, active: boolean): string {
   return parts.join('');
 }
 
-function edgePath(a: Point, b: Point, e: VizEdge): string {
+interface EdgeRender {
+  path: string;
+  label: string;
+}
+
+function edgePath(a: Point, b: Point, e: VizEdge): EdgeRender {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
-  const dist = Math.hypot(dx, dy) || 1;
-  // Perpendicular curvature; back/level edges bow more to dodge nodes.
+  // Bow consistently to the left of each edge's own direction. Because a
+  // reverse edge travels the opposite way, the pair automatically separates;
+  // forward edges arc upward. Back/level edges bow more to clear nodes.
   const forward = dx > 1;
-  const bow = forward ? 16 : 34;
-  const sign = a.y <= b.y ? -1 : 1;
-  const nx = (-dy / dist) * bow * (forward ? 1 : sign);
-  const ny = (dx / dist) * bow * (forward ? 1 : sign);
-  const mx = (a.x + b.x) / 2 + nx;
-  const my = (a.y + b.y) / 2 + ny;
+  const mag = forward ? 22 : 40;
+  const perp = unit(dy, -dx); // left normal, biased "up" for forward edges
+  const mx = (a.x + b.x) / 2 + perp.x * mag;
+  const my = (a.y + b.y) / 2 + perp.y * mag;
 
-  // Trim endpoints to the node boundary.
+  // Trim endpoints to the node boundary along the curve tangents.
   const startDir = unit(mx - a.x, my - a.y);
   const endDir = unit(b.x - mx, b.y - my);
   const sx = a.x + startDir.x * R;
@@ -208,26 +231,24 @@ function edgePath(a: Point, b: Point, e: VizEdge): string {
   const ey = b.y - endDir.y * (R + 2);
 
   const cls = ['edge-path', e.epsilon ? 'epsilon' : '', e.toTrap ? 'to-trap' : ''].filter(Boolean).join(' ');
-  const labelCls = ['edge-label', e.epsilon ? 'epsilon' : ''].filter(Boolean).join(' ');
-  const lx = quadAt(sx, mx, ex, 0.5);
-  const ly = quadAt(sy, my, ey, 0.5) - 4;
-  return (
-    `<path class="${cls}" d="M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}" marker-end="url(#arrow)"/>` +
-    `<text class="${labelCls}" x="${lx}" y="${ly}">${escapeXml(e.label)}</text>`
-  );
+  const lx = quadAt(sx, mx, ex, 0.5) + perp.x * 8;
+  const ly = quadAt(sy, my, ey, 0.5) + perp.y * 8;
+  return {
+    path: `<path class="${cls}" d="M ${sx.toFixed(1)} ${sy.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}" marker-end="url(#arrow)"/>`,
+    label: edgeLabel(lx, ly, e.label, e.epsilon),
+  };
 }
 
-function selfLoop(p: Point, e: VizEdge): string {
+function selfLoop(p: Point, e: VizEdge): EdgeRender {
   const x1 = p.x - R * 0.55;
   const x2 = p.x + R * 0.55;
   const y = p.y - R * 0.8;
   const top = p.y - R * 2.9;
   const cls = ['edge-path', e.epsilon ? 'epsilon' : ''].filter(Boolean).join(' ');
-  const labelCls = ['edge-label', e.epsilon ? 'epsilon' : ''].filter(Boolean).join(' ');
-  return (
-    `<path class="${cls}" d="M ${x1} ${y} C ${p.x - R * 1.5} ${top} ${p.x + R * 1.5} ${top} ${x2} ${y}" marker-end="url(#arrow)"/>` +
-    `<text class="${labelCls}" x="${p.x}" y="${top + 2}">${escapeXml(e.label)}</text>`
-  );
+  return {
+    path: `<path class="${cls}" d="M ${x1.toFixed(1)} ${y.toFixed(1)} C ${(p.x - R * 1.5).toFixed(1)} ${top.toFixed(1)} ${(p.x + R * 1.5).toFixed(1)} ${top.toFixed(1)} ${x2.toFixed(1)} ${y.toFixed(1)}" marker-end="url(#arrow)"/>`,
+    label: edgeLabel(p.x, top + 1, e.label, e.epsilon),
+  };
 }
 
 function unit(x: number, y: number): Point {

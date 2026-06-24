@@ -58,23 +58,21 @@ try {
     console.log(`wrote docs/${file}  (${Math.round(clip.width)}x${Math.round(clip.height)})`);
   };
 
-  // (1) Step-through mid-simulation: tape + active-set-highlighted NFA together.
-  await shot('stepthrough.png', ['.stepper', '#nfa']);
-
-  // (2) All four diagrams.
+  // (1) All four diagrams.
   await shot('graphs.png', ['.graphs']);
 
-  // (3) Overview hero: masthead through the graphs grid.
+  // (2) Overview hero: masthead through the graphs grid.
   await shot('overview.png', ['.masthead', '.graphs']);
 
-  // (4) ReDoS benchmark — run it, then capture the chart.
+  // (3) ReDoS benchmark — run it, then capture the chart.
   await page.evaluate(() => window.__viz.runBenchmark());
   await new Promise((r) => setTimeout(r, 150));
   await shot('redos.png', ['.redos']);
 
+  // The animated step-through lives in docs/stepthrough.gif (scripts/capture-gif.mjs).
   // Verify non-empty output.
   const { statSync } = await import('node:fs');
-  for (const f of ['stepthrough.png', 'graphs.png', 'overview.png', 'redos.png']) {
+  for (const f of ['graphs.png', 'overview.png', 'redos.png']) {
     const size = statSync(`docs/${f}`).size;
     if (size < 2000) throw new Error(`docs/${f} looks empty (${size} bytes)`);
     console.log(`verified docs/${f}: ${size} bytes`);
