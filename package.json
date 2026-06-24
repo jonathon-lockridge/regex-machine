@@ -1,0 +1,35 @@
+{
+  "name": "regex-machine",
+  "version": "1.0.0",
+  "description": "A from-scratch, linear-time regex engine (NFA/DFA) with an interactive visualizer",
+  "type": "module",
+  "license": "MIT",
+  "author": "jonathon-lockridge",
+  "keywords": [
+    "regex",
+    "finite-automata",
+    "nfa",
+    "dfa",
+    "typescript",
+    "visualization",
+    "redos",
+    "compiler"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9"
+  }
+}
